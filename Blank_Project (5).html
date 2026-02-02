@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="en" class=""><head><script>window.livecodes = window.livecodes || {};</script><title>Blank Project</title><meta name="title" content="Blank Project"><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0"><style id="__livecodes_styles__"></style><script src="https://cdn.jsdelivr.net/npm/es-module-shims@1.10.0/dist/es-module-shims.js" async=""></script><script type="importmap">{
+  "imports": {}
+}</script></head><body>
+
+
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>مرصد إقليم دريوش الجغرافي</title>
+
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- OpenLayers -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@10.3.1/ol.css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@10.3.1/dist/ol.js"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;600;700;900&amp;display=swap" rel="stylesheet">
+
+    <style>
+        * {
+            box-sizing: border-box;
+        }
+        
+        body {
+            margin: 0;
+            font-family: 'Cairo', sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            overflow-x: hidden;
+        }
+
+        #map {
+            width: 100%;
+            height: 100vh;
+        }
+
+        /* Glassmorphism Light Theme */
+        .glass {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.4);
+            box-shadow: 0 8px 32px rgba(31, 38, 135, 0.37);
+            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .glass:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 12px 40px rgba(31, 38, 135, 0.5);
+        }
+
+        .glass.active {
+            background: rgba(103, 230, 159, 0.4) !important;
+            border-color: rgba(103, 230, 159, 0.7) !important;
+            box-shadow: 0 0 30px rgba(103, 230, 159, 0.6);
+            transform: scale(1.05);
+        }
+
+        .glass.selected-point {
+            background: rgba(255, 107, 107, 0.4) !important;
+            border-color: rgba(255, 107, 107, 0.7) !important;
+            box-shadow: 0 0 30px rgba(255, 107, 107, 0.6);
+        }
+
+        /* Responsive Toolbar */
+        .toolbar {
+            position: fixed;
+            top: 6rem;
+            right: 1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.75rem;
+            z-index: 1000;
+            max-width: 60px;
+        }
+
+        @media (max-width: 768px) {
+            .toolbar {
+                top: 5rem;
+                right: 0.5rem;
+                flex-direction: row;
+                flex-wrap: wrap;
+                gap: 0.5rem;
+                bottom: auto;
+                padding: 1rem;
+                max-width: none;
+            }
+            
+            .toolbar button {
+                flex: 1 1 45%;
+                min-width: 50px;
+            }
+        }
+
+        @media (max-width: 480px) {
+            .toolbar {
+                flex-direction: row;
+                top: auto;
+                bottom: 1rem;
+                left: 50%;
+                transform: translateX(-50%);
+                flex-wrap: nowrap;
+                gap: 0.25rem;
+                padding: 0.5rem;
+            }
+            
+            .toolbar button {
+                flex: 0 0 48px;
+                padding: 0.75rem;
+            }
+        }
+
+        /* Custom Icons - Light Style */
+        .icon-light {
+            filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+            transition: all 0.3s ease;
+        }
+
+        .glass:hover .icon-light {
+            filter: drop-shadow(0 4px 8px rgba(0,0,0,0.4)) brightness(1.1);
+            transform: scale(1.1);
+        }
+
+        /* Popup Positioning */
+        .popup {
+            position: absolute;
+            z-index: 1001;
+            max-width: 350px;
+            pointer-events: none;
+            opacity: 0;
+            transform: translateY(-20px) scale(0.9);
+            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+
+        .popup.show {
+            opacity: 1;
+            transform: translateY(0) scale(1);
+            pointer-events: all;
+        }
+
+        @media (max-width: 480px) {
+            .popup {
+                max-width: 300px;
+                left: 50% !important;
+                top: 50% !important;
+                transform: translate(-50%, -50%) scale(0.8);
+            }
+            
+            .popup.show {
+                transform: translate(-50%, -50%) scale(1);
+            }
+        }
+
+        /* Header Responsive */
+        header {
+            backdrop-filter: blur(20px);
+            background: rgba(255, 255, 255, 0.15);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        @media (max-width: 640px) {
+            header {
+                padding: 0.75rem 1rem;
+                flex-direction: column;
+                gap: 0.5rem;
+                height: auto;
+            }
+        }
+
+        /* Modal Responsive */
+        .modal {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.6);
+            backdrop-filter: blur(10px);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            z-index: 2000;
+            opacity: 0;
+            visibility: hidden;
+            transition: all 0.3s ease;
+        }
+
+        .modal.show {
+            opacity: 1;
+            visibility: visible;
+        }
+
+        @media (max-width: 480px) {
+            .modal-content {
+                margin: 1rem;
+                max-width: calc(100vw - 2rem);
+            }
+        }
+
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-track {
+            background: rgba(255,255,255,0.1);
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.3);
+            border-radius: 3px;
+        }
+
+        ::-webkit-scrollbar-thumb:hover {
+            background: rgba(255,255,255,0.5);
+        }
+    </style>
+
+
+
+<!-- Header -->
+<header class="fixed top-0 right-0 left-0 h-16 z-50 flex items-center justify-between px-6 glass text-white shadow-2xl">
+    <div class="font-black text-2xl md:text-xl">🌍 مرصد دريوش الجغرافي</div>
+    <div class="flex items-center gap-4">
+        <span class="px-4 py-2 rounded-2xl bg-white/20 backdrop-blur-sm text-lg font-bold">
+            <span id="count">0</span> نقطة
+        </span>
+    </div>
+</header>
+
+<!-- Toolbar -->
+<div class="toolbar">
+    <button id="drawBtn" class="glass p-3 rounded-2xl active-tool relative overflow-hidden group" title="إضافة نقطة">
+        <div class="w-full h-full absolute inset-0 bg-gradient-to-br from-blue-400/20 to-purple-400/20 -skew-x-3 -rotate-1 group-hover:rotate-0 transition-all duration-300"></div>
+        <svg class="w-7 h-7 icon-light relative z-10" fill="#4ade80" viewBox="0 0 24 24">
+            <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"></path>
+        </svg>
+    </button>
+    
+    <button id="modifyBtn" class="glass p-3 rounded-2xl relative overflow-hidden group" title="تحريك النقطة">
+        <div class="w-full h-full absolute inset-0 bg-gradient-to-br from-yellow-400/20 to-orange-400/20 rotate-1 group-hover:rotate-0 transition-all duration-300"></div>
+        <svg class="w-7 h-7 icon-light relative z-10" fill="#fbbf24" viewBox="0 0 24 24">
+            <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"></path>
+        </svg>
+    </button>
+    
+    <button id="deleteBtn" class="glass p-3 rounded-2xl relative overflow-hidden group" title="حذف النقطة">
+        <div class="w-full h-full absolute inset-0 bg-gradient-to-br from-red-400/20 to-pink-400/20 skew-x-3 group-hover:skew-x-0 transition-all duration-300"></div>
+        <svg class="w-7 h-7 icon-light relative z-10" fill="#f87171" viewBox="0 0 24 24">
+            <path d="M6 19c0 1.1.9 2 2 2h8c1.1 0 2-.9 2-2V7H6v12zM19 4h-3.5l-1-1h-5l-1 1H5v2h14V4z"></path>
+        </svg>
+    </button>
+    
+    <button id="undoBtn" class="glass p-3 rounded-2xl relative overflow-hidden group" title="التراجع">
+        <div class="w-full h-full absolute inset-0 bg-gradient-to-br from-indigo-400/20 to-violet-400/20 -rotate-2 group-hover:rotate-0 transition-all duration-300"></div>
+        <svg class="w-7 h-7 icon-light relative z-10" fill="#a78bfa" viewBox="0 0 24 24">
+            <path d="M12.5 8c-2.65 0-5.05.99-6.9 2.6L2 7v9h9l-3.62-3.62c1.39-1.16 3.16-1.88 5.12-1.88 3.54 0 6.55 2.31 7.6 5.5l1.5-1c-.98-2.52-3.46-4.38-6.35-4.38z"></path>
+        </svg>
+    </button>
+    
+    <button id="coordBtn" class="glass p-3 rounded-2xl relative overflow-hidden group" title="إدخال الإحداثيات">
+        <div class="w-full h-full absolute inset-0 bg-gradient-to-br from-teal-400/20 to-emerald-400/20 rotate-2 group-hover:rotate-0 transition-all duration-300"></div>
+        <svg class="w-7 h-7 icon-light relative z-10" fill="#10b981" viewBox="0 0 24 24">
+            <circle cx="12" cy="12" r="10" stroke="#fff" stroke-width="2" fill="none"></circle>
+            <path d="M12 2a10 10 0 0 0-8 4h16a10 10 0 0 0-8-4z"></path>
+        </svg>
+    </button>
+    
+    <button id="exportAllBtn" class="glass p-3 rounded-2xl relative overflow-hidden group" title="تصدير جميع النقاط">
+        <div class="w-full h-full absolute inset-0 bg-gradient-to-br from-purple-400/20 to-pink-400/20 -skew-x-2 group-hover:skew-x-0 transition-all duration-300"></div>
+        <svg class="w-7 h-7 icon-light relative z-10" fill="#ec4899" viewBox="0 0 24 24">
+            <path d="M19 9h-4V3H9v6H5l7 7 7-7zM5 18v2h14v-2H5z"></path>
+        </svg>
+    </button>
+</div>
+
+<!-- Map -->
+<div id="map"></div>
+
+<!-- Coordinate Modal -->
+<div id="coordModal" class="modal">
+    <div class="glass p-8 rounded-3xl max-w-md w-full mx-6 modal-content">
+        <div class="flex justify-between items-center mb-8">
+            <h3 class="font-black text-2xl bg-gradient-to-r from-blue-400 to-purple-500 bg-clip-text text-transparent">📍 إدخال الإحداثيات</h3>
+            <button id="closeCoordModal" class="text-3xl hover:scale-110 transition-all">×</button>
+        </div>
+        <div class="space-y-6">
+            <input id="manualLat" type="number" step="any" placeholder="خط العرض (Latitude)" class="w-full p-5 rounded-2xl bg-white/10 border-2 border-white/30 text-white placeholder-white/70 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-400/20 transition-all text-lg">
+            <input id="manualLon" type="number" step="any" placeholder="خط الطول (Longitude)" class="w-full p-5 rounded-2xl bg-white/10 border-2 border-white/30 text-white placeholder-white/70 focus:outline-none focus:border-blue-400 focus:ring-4 focus:ring-blue-400/20 transition-all text-lg">
+            <div class="flex gap-4 pt-4">
+                <button id="addCoordBtn" class="flex-1 bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 rounded-2xl py-4 font-black text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
+                    إضافة النقطة
+                </button>
+                <button id="cancelCoordBtn" class="flex-1 glass hover:bg-white/30 rounded-2xl py-4 font-bold text-lg hover:scale-105 transition-all duration-300">
+                    إلغاء
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Point Popup Overlay -->
+<div id="popupOverlay" class="fixed inset-0 bg-black/60 backdrop-blur-sm z-2000 hidden"></div>
+<div id="pointPopup" class="popup glass p-8 rounded-3xl text-white shadow-2xl max-w-sm">
+    <div class="flex justify-between items-center mb-8">
+        <h3 class="font-black text-2xl bg-gradient-to-r from-emerald-400 to-teal-500 bg-clip-text text-transparent">📍 بيانات النقطة</h3>
+        <button id="closePopup" class="text-3xl hover:scale-110 transition-all hover:text-red-400">×</button>
+    </div>
+    
+    <div class="space-y-6">
+        <div>
+            <label class="block text-sm font-semibold mb-2 text-white/90">اسم / عنوان النقطة</label>
+            <input id="nameInput" class="w-full p-4 rounded-2xl bg-white/10 border-2 border-white/30 text-white placeholder-white/70 focus:outline-none focus:border-emerald-400 focus:ring-4 focus:ring-emerald-400/20 transition-all text-lg font-semibold" placeholder="أدخل اسم النقطة">
+        </div>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label class="block text-sm font-semibold mb-2 text-white/90">خط العرض (Lat)</label>
+                <input id="latInput" type="number" step="any" class="w-full p-4 rounded-2xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-2 border-blue-400 text-white font-mono text-lg font-bold">
+            </div>
+            <div>
+                <label class="block text-sm font-semibold mb-2 text-white/90">خط الطول (Lon)</label>
+                <input id="lonInput" type="number" step="any" class="w-full p-4 rounded-2xl bg-gradient-to-r from-blue-500/20 to-purple-500/20 border-2 border-blue-400 text-white font-mono text-lg font-bold">
+            </div>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-6">
+            <button id="saveBtn" class="bg-gradient-to-r from-emerald-500 to-teal-600 hover:from-emerald-600 hover:to-teal-700 rounded-2xl py-4 font-black text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
+                💾 حفظ التغييرات
+            </button>
+            <button id="downloadBtn" class="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 rounded-2xl py-4 font-black text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300">
+                ⬇️ تنزيل النقطة
+            </button>
+        </div>
+        
+        <div class="text-center pt-4">
+            <button id="deleteSingleBtn" class="bg-gradient-to-r from-red-500 to-pink-500 hover:from-red-600 hover:to-pink-600 px-8 py-3 rounded-xl font-bold text-lg shadow-xl hover:shadow-2xl hover:scale-105 transition-all duration-300 text-white">
+                🗑️ حذف النقطة
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// ============================================================================
+// المتغيرات العامة
+// ============================================================================
+const config = {
+    center: ol.proj.fromLonLat([-3.3884, 34.9767]),
+    initialZoom: 11,
+    provinceUrl: 'https://raw.githubusercontent.com/geotoposig/AIDSIG/refs/heads/main/PROVINCE_DRIOUCH.geojson',
+    communesUrl: 'https://raw.githubusercontent.com/geotoposig/AIDSIG/refs/heads/main/COMMUNES_DRIOUCH.geojson'
+};
+
+let map, pointSource, pointLayer, currentFeature = null;
+let activeTool = null, interactions = {};
+let popup, popupOverlay;
+
+// ============================================================================
+// إنشاء الخريطة والطبقات
+// ============================================================================
+function initMap() {
+    const sources = {
+        googleSat: new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                url: 'https://mt1.google.com/vt/lyrs=s&x={x}&y={y}&z={z}',
+                maxZoom: 20
+            })
+        }),
+        googleLabels: new ol.layer.Tile({
+            source: new ol.source.XYZ({
+                url: 'https://mt1.google.com/vt/lyrs=h&x={x}&y={y}&z={z}',
+                maxZoom: 20
+            })
+        }),
+        province: new ol.source.Vector({ url: config.provinceUrl, format: new ol.format.GeoJSON() }),
+        communes: new ol.source.Vector({ url: config.communesUrl, format: new ol.format.GeoJSON() }),
+        points: new ol.source.Vector()
+    };
+
+    const styles = {
+        province: new ol.style.Style({
+            stroke: new ol.style.Stroke({ color: '#000', width: 4 }),
+            fill: new ol.style.Fill({ color: 'rgba(0,0,0,0)' })
+        }),
+        commune: feature => [
+            new ol.style.Style({
+                stroke: new ol.style.Stroke({ color: '#ef4444', width: 2 }),
+                fill: new ol.style.Fill({ color: 'rgba(239,68,68,0.1)' })
+            }),
+            new ol.style.Style({
+                text: new ol.style.Text({
+                    text: feature.get('CommuneMun') || 'غير محدد',
+                    font: 'bold 14px Cairo',
+                    fill: new ol.style.Fill({ color: '#ef4444' }),
+                    stroke: new ol.style.Stroke({ color: '#fff', width: 3 })
+                })
+            })
+        ],
+        point: function(feature) {
+            const isSelected = feature.get('selected') || false;
+            return new ol.style.Style({
+                image: new ol.style.Circle({
+                    radius: isSelected ? 18 : 14,
+                    fill: new ol.style.Fill({ color: isSelected ? '#ef4444' : '#22c55e' }),
+                    stroke: new ol.style.Stroke({ color: '#fff', width: isSelected ? 6 : 4 })
+                }),
+                text: new ol.style.Text({
+                    text: feature.get('name') || '📍',
+                    offsetY: -30,
+                    font: 'bold 16px Cairo',
+                    fill: new ol.style.Fill({ color: '#fff' }),
+                    stroke: new ol.style.Stroke({ color: '#000', width: 4 })
+                })
+            });
+        }
+    };
+
+    // إنشاء الطبقات
+    const provinceLayer = new ol.layer.Vector({ source: sources.province, style: styles.province });
+    const communeLayer = new ol.layer.Vector({ source: sources.communes, style: styles.commune });
+    
+    pointSource = sources.points;
+    pointLayer = new ol.layer.Vector({ source: pointSource, style: styles.point });
+
+    // إنشاء الخريطة
+    map = new ol.Map({
+        target: 'map',
+        layers: [sources.googleSat, sources.googleLabels, provinceLayer, communeLayer, pointLayer],
+        view: new ol.View({ center: config.center, zoom: config.initialZoom })
+    });
+
+    // تكبير تلقائي للإقليم
+    Promise.all([
+        new Promise(resolve => sources.province.once('featuresloadend', resolve)),
+        new Promise(resolve => sources.communes.once('featuresloadend', resolve))
+    ]).then(() => {
+        const extent = ol.extent.extend(sources.province.getExtent(), sources.communes.getExtent());
+        map.getView().fit(extent, { padding: [20, 20, 200, 20], duration: 2000 });
+    });
+
+    initInteractions();
+    initEventListeners();
+    updatePointCount();
+}
+
+// ============================================================================
+// إدارة الأدوات والتفاعلات
+// ============================================================================
+function setActiveTool(toolId) {
+    document.querySelectorAll('.toolbar button').forEach(btn => btn.classList.remove('active'));
+    if (toolId) document.getElementById(toolId).classList.add('active');
+    activeTool = toolId;
+}
+
+function initInteractions() {
+    // تفاعل التحديد
+    interactions.select = new ol.interaction.Select({
+        layers: [pointLayer],
+        style: new ol.style.Style({
+            image: new ol.style.Circle({
+                radius: 20,
+                fill: new ol.style.Fill({ color: '#ef4444' }),
+                stroke: new ol.style.Stroke({ color: '#fff', width: 6 })
+            })
+        })
+    });
+    map.addInteraction(interactions.select);
+
+    interactions.select.on('select', function(e) {
+        e.selected.forEach(f => f.set('selected', true));
+        e.deselected.forEach(f => f.set('selected', false));
+        pointLayer.changed();
+    });
+
+    // Single click لعرض popup
+    map.on('singleclick', function(evt) {
+        const feature = map.forEachFeatureAtPixel(evt.pixel, function(feature) {
+            return feature;
+        }, { layerFilter: f => f === pointLayer });
+
+        if (feature) {
+            showPointPopup(feature);
+        } else {
+            hidePointPopup();
+        }
+    });
+}
+
+function toggleDraw() {
+    deactivateAllInteractions();
+    interactions.draw = new ol.interaction.Draw({ source: pointSource, type: 'Point' });
+    map.addInteraction(interactions.draw);
+    interactions.draw.on('drawend', handleDrawEnd);
+    setActiveTool('drawBtn');
+}
+
+function toggleModify() {
+    deactivateAllInteractions();
+    interactions.modify = new ol.interaction.Modify({ source: pointSource });
+    map.addInteraction(interactions.modify);
+    setActiveTool('modifyBtn');
+}
+
+function deactivateAllInteractions() {
+    Object.values(interactions).forEach(interaction => {
+        if (interaction && map.getInteractions().getArray().includes(interaction)) {
+            map.removeInteraction(interaction);
+        }
+    });
+}
+
+// ============================================================================
+// معالجة النقاط والـ Popups
+// ============================================================================
+function handleDrawEnd(e) {
+    currentFeature = e.feature;
+    const coords = e.feature.getGeometry().getCoordinates();
+    const lonLat = ol.proj.toLonLat(coords);
+    
+    showPointPopup(currentFeature, lonLat[1], lonLat[0]);
+    map.removeInteraction(interactions.draw);
+    setActiveTool(null);
+}
+
+function showPointPopup(feature, lat = null, lon = null) {
+    currentFeature = feature;
+    popupOverlay.classList.remove('hidden');
+    popup.classList.add('show');
+    
+    const coords = feature.getGeometry().getCoordinates();
+    const lonLat = ol.proj.toLonLat(coords);
+    
+    document.getElementById('nameInput').value = feature.get('name') || '';
+    document.getElementById('latInput').value = lat || lonLat[1].toFixed(6);
+    document.getElementById('lonInput').value = lon || lonLat[0].toFixed(6);
+    
+    // وضع الـ popup بالقرب من النقطة
+    const pixel = map.getPixelFromCoordinate(coords);
+    popup.style.left = (pixel[0] + 20) + 'px';
+    popup.style.top = (pixel[1] - 20) + 'px';
+    
+    map.getView().animate({
+        center: coords,
+        duration: 500
+    });
+}
+
+function hidePointPopup() {
+    popupOverlay.classList.add('hidden');
+    popup.classList.remove('show');
+    currentFeature = null;
+}
+
+function savePointChanges() {
+    if (!currentFeature) return;
+    
+    const name = document.getElementById('nameInput').value.trim();
+    const lat = parseFloat(document.getElementById('latInput').value);
+    const lon = parseFloat(document.getElementById('lonInput').value);
+    
+    if (!name) {
+        alert('أدخل اسم النقطة');
+        return;
+    }
+    
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        alert('إحداثيات غير صحيحة');
+        return;
+    }
+    
+    currentFeature.set('name', name);
+    currentFeature.getGeometry().setCoordinates(ol.proj.fromLonLat([lon, lat]));
+    pointLayer.changed();
+    updatePointCount();
+    hidePointPopup();
+}
+
+function downloadSinglePoint() {
+    if (!currentFeature) return;
+    
+    const coords = ol.proj.toLonLat(currentFeature.getGeometry().getCoordinates());
+    const data = {
+        name: currentFeature.get('name'),
+        lat: coords[1],
+        lon: coords[0]
+    };
+    
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `point-${data.name || 'unnamed'}-${Date.now()}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
+}
+
+function deleteSelected() {
+    if (interactions.select.getFeatures().getLength() > 0) {
+        interactions.select.getFeatures().getArray().forEach(f => pointSource.removeFeature(f));
+        interactions.select.getFeatures().clear();
+        updatePointCount();
+    } else if (currentFeature) {
+        pointSource.removeFeature(currentFeature);
+        updatePointCount();
+        hidePointPopup();
+    }
+}
+
+// ============================================================================
+// التصدير والاستيراد
+// ============================================================================
+function exportAllPoints() {
+    const features = pointSource.getFeatures().map(f => {
+        const coords = ol.proj.toLonLat(f.getGeometry().getCoordinates());
+        return { name: f.get('name'), lat: coords[1], lon: coords[0] };
+    });
+
+    const zip = new JSZip();
+    zip.file('points.geojson', JSON.stringify({
+        type: 'FeatureCollection',
+        features: features.map(f => ({
+            type: 'Feature',
+            properties: { name: f.name },
+            geometry: { type: 'Point', coordinates: [f.lon, f.lat] }
+        }))
+    }, null, 2));
+
+    zip.file('points.csv', 'Name,Latitude,Longitude\n' + features.map(f => `"${f.name}",${f.lat},${f.lon}`).join('\n'));
+    
+    zip.generateAsync({ type: "blob" }).then(content => {
+        const link = document.createElement("a");
+        link.href = URL.createObjectURL(content);
+        link.download = `driouch-points-${new Date().toISOString().slice(0,10)}.zip`;
+        link.click();
+    });
+}
+
+function updatePointCount() {
+    document.getElementById('count').textContent = pointSource.getFeatures().length;
+}
+
+// ============================================================================  
+// إدارة النافذة المنبثقة للإحداثيات
+// ============================================================================
+function openCoordModal() {
+    document.getElementById('coordModal').classList.add('show');
+    setActiveTool(null);
+}
+
+function addFromCoordinates() {
+    const lat = parseFloat(document.getElementById('manualLat').value);
+    const lon = parseFloat(document.getElementById('manualLon').value);
+    
+    if (isNaN(lat) || isNaN(lon) || lat < -90 || lat > 90 || lon < -180 || lon > 180) {
+        alert('❌ إحداثيات غير صحيحة');
+        return;
+    }
+    
+    currentFeature = new ol.Feature({
+        geometry: new ol.geom.Point(ol.proj.fromLonLat([lon, lat])),
+        name: ''
+    });
+    
+    document.getElementById('coordModal').classList.remove('show');
+    showPointPopup(currentFeature, lat, lon);
+}
+
+// ============================================================================
+// ربط الأحداث
+// ============================================================================
+function initEventListeners() {
+    // أزرار الأدوات
+    document.getElementById('drawBtn').onclick = toggleDraw;
+    document.getElementById('modifyBtn').onclick = toggleModify;
+    document.getElementById('deleteBtn').onclick = deleteSelected;
+    document.getElementById('coordBtn').onclick = openCoordModal;
+    document.getElementById('exportAllBtn').onclick = exportAllPoints;
+    
+    // popup النقطة
+    document.getElementById('saveBtn').onclick = savePointChanges;
+    document.getElementById('downloadBtn').onclick = downloadSinglePoint;
+    document.getElementById('deleteSingleBtn').onclick = deleteSelected;
+    document.getElementById('closePopup').onclick = hidePointPopup;
+    
+    // Modal الإحداثيات
+    document.getElementById('closeCoordModal').onclick = () => document.getElementById('coordModal').classList.remove('show');
+    document.getElementById('cancelCoordBtn').onclick = () => document.getElementById('coordModal').classList.remove('show');
+    document.getElementById('addCoordBtn').onclick = addFromCoordinates;
+    
+    // overlay الـ popup
+    popupOverlay = document.getElementById('popupOverlay');
+    popup = document.getElementById('pointPopup');
+    popupOverlay.onclick = hidePointPopup;
+    
+    // إغلاق بـ ESC
+    document.addEventListener('keydown', e => {
+        if (e.key === 'Escape') {
+            hidePointPopup();
+            document.getElementById('coordModal').classList.remove('show');
+        }
+    });
+}
+
+// تحميل JSZip
+const jszipScript = document.createElement('script');
+jszipScript.src = 'https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js';
+document.head.appendChild(jszipScript);
+
+// تشغيل التطبيق
+window.addEventListener('DOMContentLoaded', initMap);
+</script>
+
+
+
+<script></script></body></html>
